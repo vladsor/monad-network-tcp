@@ -1,0 +1,29 @@
+name:           monad-network-instances
+version:        0.0.0.1
+license:        BSD3
+license-file:   LICENSE
+maintainer:     Vladimir Sorokin <v.d.sorokin@gmail.com>
+synopsis:       Instances MonadConnection for Network & TLS
+description:    Instances MonadConnection for Network & TLS
+category:       Network, TLS
+build-type:     Simple
+cabal-version:  >=1.10
+homepage:       http://github.com/vladsor/monad-network-instances
+bug-reports:    http://github.com/vladsor/monad-network-instances/issues
+
+Library
+    default-language: Haskell2010
+    build-depends: base
+                 , bytestring
+                 , exceptions
+                 , mtl
+                 , network
+                 , tls == 1.2.17
+                 , transformers
+                 , crypto-random
+                 , cprng-aes
+                 , monad-network-class
+    exposed-modules: Network.Monad
+                   , Network.Monad.TLS
+
+    ghc-options: -fwarn-incomplete-patterns -O2 -auto-all -caf-all -fprof-auto -fllvm -funfolding-use-threshold=16
