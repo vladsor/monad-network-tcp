@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Network.Monad.TLS
        ( TLSConn
@@ -70,7 +71,7 @@ instance (MonadConnection l, Functor l, MonadMask l, MonadIO l) => MonadConnecti
   recv = tlsRecv
   reconnect = tlsRecconnect
 
-instance (RunMonadConnection l a b, Functor l, MonadMask l, MonadIO l) => RunMonadConnection (TLSConn l) (TLS.ClientParams l, RNG.AESRNG) l where
+instance (MonadConnection l, RunMonadConnection l a b, Functor l, MonadMask l, MonadIO l) => RunMonadConnection (TLSConn l) (TLS.ClientParams l, RNG.AESRNG) l where
   runConnection (params, rng) conn = do
     let recvAll acc len | len == 0 = return acc
         recvAll acc len = do
@@ -78,11 +79,10 @@ instance (RunMonadConnection l a b, Functor l, MonadMask l, MonadIO l) => RunMon
                             if S.length b > 0 then recvAll (acc <> b) (len - S.length b)
                             else return acc
 
-    let cBackend = TLS.Backend (return ()) (return ()) send (recvAll S.empty)
+    let cBackend :: TLS.Backend l = TLS.Backend (return ()) (return ()) send (recvAll S.empty)
 
     ctx <- TLS.contextNew cBackend params rng
     TLS.handshake ctx
-    (v, TLSConnState _ _) <- ST.runStateT (connState conn) (TLSConnState ctx S.empty)
+    v <- ST.evalStateT (connState conn) (TLSConnState ctx S.empty)
     TLS.bye ctx
     return v
-

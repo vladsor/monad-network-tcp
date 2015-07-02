@@ -26,4 +26,4 @@ Library
     exposed-modules: Network.Monad
                    , Network.Monad.TLS
 
-    ghc-options: -fwarn-incomplete-patterns -O2 -auto-all -caf-all -fprof-auto -fllvm -funfolding-use-threshold=16
+    ghc-options: -fwarn-incomplete-patterns -O2 -auto-all -caf-all -fprof-auto -funfolding-use-threshold=16

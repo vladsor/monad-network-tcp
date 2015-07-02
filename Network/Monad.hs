@@ -61,7 +61,6 @@ instance MonadConnection NetworkConn where
 instance RunMonadConnection NetworkConn NS.AddrInfo IO where
   runConnection addr conn = do
     st <- mkNetworkConn addr
-    (v, NetworkConnState s' _) <- ST.runStateT (connState conn) st
-    NS.close s'
+    (v, NetworkConnState s _) <- ST.runStateT (connState conn) st
+    NS.close s
     return v
-
