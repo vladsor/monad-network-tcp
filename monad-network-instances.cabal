@@ -15,15 +15,19 @@ Library
     default-language: Haskell2010
     build-depends: base
                  , bytestring
+                 , ether
                  , exceptions
                  , mtl
                  , network
-                 , tls == 1.2.17
+                 , tls
                  , transformers
                  , crypto-random
                  , cprng-aes
                  , monad-network-class
+                 , newtype-generics
     exposed-modules: Network.Monad
                    , Network.Monad.TLS
+                   , Network.Ether.Monad
+                   , Network.Ether.Monad.TLS
 
     ghc-options: -fwarn-incomplete-patterns -O2 -auto-all -caf-all -fprof-auto -funfolding-use-threshold=16
