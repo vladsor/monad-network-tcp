@@ -1,6 +1,9 @@
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE CPP                        #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TupleSections              #-}
+
+-- #define DEBUG 1
 
 module Network.Monad
        ( Tcp
@@ -8,30 +11,27 @@ module Network.Monad
        , runConnection
        ) where
 
-import Prelude hiding (mapM, mapM_)
-import Control.Applicative
-import Control.Monad
-import Control.Monad.Trans.Class (lift)
-import Control.Monad.IO.Class (MonadIO(..))
-import Control.Monad.Catch
-
-import Control.Monad.Network.Class (MonadConnection(..))
-
-import Control.Monad.State.Strict (StateT)
-import qualified Control.Monad.State.Strict as ST
-
-import qualified Network.Socket as NS hiding (recv, send)
-import qualified Network.Socket.ByteString as NS
-import qualified Data.ByteString as S
-import GHC.Generics (Generic)
-
-import Control.Monad.Trans
-import Data.Typeable
+import           Control.Applicative
+import           Control.Monad
+import           Control.Monad.Catch
+import           Control.Monad.IO.Class      (MonadIO (..))
+import           Control.Monad.Morph         (MFunctor)
+import           Control.Monad.Network.Class (MonadConnection (..))
+import           Control.Monad.State.Strict  (StateT)
+import qualified Control.Monad.State.Strict  as ST
+import           Control.Monad.Trans
+import           Control.Monad.Trans.Class   (lift)
+import qualified Data.ByteString             as S
+import           Data.Typeable
+import           GHC.Generics                (Generic)
+import qualified Network.Socket              as NS hiding (recv, send)
+import qualified Network.Socket.ByteString   as NS
+import           Prelude                     hiding (mapM, mapM_)
 
 data ConnState = ConnState { ncSocket :: NS.Socket, ncAddr :: NS.AddrInfo }
 
 newtype TcpT m a = TcpT { connStateT :: StateT ConnState m a }
-                        deriving (Functor, Applicative, Monad, MonadIO, MonadThrow, MonadCatch, MonadMask)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadThrow, MonadCatch, MonadMask, MFunctor)
 
 type Tcp = TcpT IO
 
@@ -47,8 +47,7 @@ data TcpException = TcpExceptionConnect String
 instance Exception TcpException
 
 rethrow thr io = do
-  r <- liftIO $ do
-    mask $ \unm -> unm (liftM Right io) `catch` (\(e :: SomeException) -> return (Left (show e)))
+  r <- liftIO $ mask $ \unm -> unm (Right <$> io) `catch` (\(e :: SomeException) -> return (Left (show e)))
   case r of
     Right r' -> return r'
     Left exc -> throwM (thr exc)
@@ -62,16 +61,21 @@ mkConnState addr = do
 instance (MonadIO m, MonadThrow m) => MonadConnection (TcpT m) where
   send bs = TcpT $ do
     ConnState s _ <- ST.get
+#ifdef DEBUG
+    liftIO $ print $ "sending:" ++ (show $ S.length bs)
+#endif
     lift $ rethrow TcpExceptionSend (NS.send s bs)
     return ()
   recv len = TcpT $ do
     ConnState s _ <- ST.get
-    r <- lift $ rethrow TcpExceptionReceive (NS.recv s len)
-    return r
+#ifdef DEBUG
+    liftIO $ print $ "receiving:" ++ (show len)
+#endif
+    lift $ rethrow TcpExceptionReceive (NS.recv s len)
   reconnect = TcpT $ do
     ConnState s addr <- ST.get
     lift $ rethrow TCpExceptionDisconnect $ NS.close s
-    ST.StateT $ const $ liftM ((),) $ mkConnState addr
+    ST.StateT $ const $ ((),) <$> mkConnState addr
 
 runConnection :: (MonadIO m, MonadThrow m) => NS.AddrInfo -> TcpT m a -> m a
 runConnection addr conn = do
