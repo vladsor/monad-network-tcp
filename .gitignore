@@ -10,5 +10,6 @@ src/main
 *.ps
 *.pdf
 *.config
+*.un~
 TAGS
 codex.tags

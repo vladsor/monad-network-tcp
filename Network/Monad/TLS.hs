@@ -3,8 +3,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
-
--- #define DEBUG 1
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE TypeInType #-}
 
 module Network.Monad.TLS
        ( TlsT
@@ -28,9 +29,15 @@ import qualified Network.TLS                      as TLS
 import qualified Network.TLS.Backend              as TLS
 import           Prelude                          hiding (mapM, mapM_)
 import           Control.Monad.Morph         (MFunctor)
+import Data.Kind
+
+type K_Monad = Type -> Type
+
+type K_Trans = K_Monad -> K_Monad
+
 
 data ConnState s = TLSConnState { tlsCtx :: TLS.Context s, tlsBuffer :: S.ByteString }
-newtype TlsT s l a = TlsT { connState :: StateT (ConnState s) l a }
+newtype TlsT (s :: K_Monad) (l :: K_Monad) (a :: Type)  = TlsT { connState :: StateT (ConnState s) l a }
     deriving (Functor, Applicative, Monad, MonadIO, MonadThrow, MonadCatch, MonadMask, MonadTrans, MFunctor)
 
 data TlsException = TlsExceptionSend String
@@ -100,7 +107,10 @@ instance (MonadConnection l, MonadIO l) => TLS.HasBackend Backend l where
                             if S.length b > 0 then recvAll (acc <> b) (len - S.length b)
                             else return acc
 
-runConnection :: (Monad (t s), MonadConnection s, MonadIO s, MonadRandom s, MonadMask s, MonadTrans t, MonadCatch (t s)) => TLS.ClientParams s -> TlsT s (t s) a -> (t s) a
+runConnection :: (Monad (t s), MonadConnection s, MonadIO s, MonadRandom s, MonadMask s, MonadTrans t, MonadCatch (t s))
+              => TLS.ClientParams s
+              -> TlsT s (t s) a
+              -> (t s) a
 runConnection params conn = do
 #ifdef DEBUG
     liftIO $ print "Create TLS context"

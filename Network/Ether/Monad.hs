@@ -1,6 +1,20 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE AllowAmbiguousTypes     #-}
+{-# LANGUAGE ConstraintKinds         #-}
+{-# LANGUAGE DataKinds               #-}
+{-# LANGUAGE FlexibleContexts        #-}
+{-# LANGUAGE FlexibleInstances       #-}
+{-# LANGUAGE FunctionalDependencies  #-}
+{-# LANGUAGE MultiParamTypeClasses   #-}
+{-# LANGUAGE PolyKinds               #-}
+{-# LANGUAGE RankNTypes              #-}
+{-# LANGUAGE ScopedTypeVariables     #-}
+{-# LANGUAGE TypeApplications        #-}
+{-# LANGUAGE TypeFamilies            #-}
+{-# LANGUAGE TypeInType              #-}
+{-# LANGUAGE TypeSynonymInstances    #-}
+{-# LANGUAGE UndecidableInstances    #-}
+{-# LANGUAGE UndecidableSuperClasses #-}
+
 
 module Network.Ether.Monad
        ( TcpT
@@ -8,27 +22,75 @@ module Network.Ether.Monad
        , runConnection
        ) where
 
-import Prelude hiding (mapM, mapM_)
-import qualified Network.Monad as T
+import qualified Network.Monad                     as T
+import           Prelude                           hiding (mapM, mapM_)
 
-import qualified Control.Monad.Network.Class as T (MonadConnection(..))
-import qualified Control.Monad.Ether.Network.Class as E (MonadConnection(..))
+import qualified Control.Monad.Ether.Network.Class as E (MonadConnection (..))
+import qualified Control.Monad.Network.Class       as T (MonadConnection (..))
 
-import Control.Monad.IO.Class (MonadIO(..))
-import Control.Monad.Catch
+import           Control.Monad.Catch
+import           Control.Monad.IO.Class            (MonadIO (..))
 
-import qualified Network.Socket as NS hiding (recv, send)
+import qualified Network.Socket                    as NS hiding (recv, send)
 
-import Control.Monad.Trans.Ether.Tagged
-import Data.Functor.Identity (Identity(..))
+-- import           Control.Monad.Ether.Network.Class (CONN, Handle (..), TAGGED)
+import           Data.Coerce
+import           Data.Functor.Identity             (Identity (..))
+import           Data.Kind
+-- import           Data.Tagged
+import           Ether.TaggedTrans
+import           GHC.Exts                          (Constraint)
 
-type TcpT tag m = TaggedTrans tag T.TcpT m
+instance Handle CONN T.TcpT where
+  handling r = r
+
 type Tcp tag = TcpT tag Identity
+type TcpT tag = TaggedTrans (TAGGED CONN tag) T.TcpT
 
-instance (MonadIO m, MonadThrow m) => E.MonadConnection tag (TcpT tag m) where
-  send _ = pack . T.send
-  recv _ = pack . T.recv
-  reconnect _ = pack T.reconnect
+data TAGGED e t
 
-runConnection :: (MonadIO m, MonadThrow m) => proxy tag -> NS.AddrInfo -> TcpT tag m a -> m a
-runConnection _ addr conn = T.runConnection addr (unpack conn)
+type K_Monad = Type -> Type
+
+type K_Trans = K_Monad -> K_Monad
+
+type family
+  HandleSuper
+    (eff :: keff)
+    (trans :: K_Trans)
+  :: Constraint
+
+type family
+  HandleConstraint
+    (eff :: keff)
+    (trans :: K_Trans) (m :: K_Monad)
+  :: Constraint
+
+class
+  HandleSuper eff trans =>
+    Handle eff (trans :: K_Trans)
+  where
+    handling :: (Monad m, MonadIO m, MonadThrow m) => (HandleConstraint eff trans m => r) -> r
+
+data CONN
+
+type instance HandleSuper      CONN trans   = ()
+type instance HandleConstraint CONN trans m =
+  T.MonadConnection (trans m)
+
+instance
+    ( Handle CONN trans
+    , Monad m, MonadIO m, MonadThrow m, Monad (trans m)
+    ) => E.MonadConnection tag (TaggedTrans (TAGGED CONN tag) trans m)
+  where
+      send =
+          handling @CONN @trans @m $
+          coerce (T.send @(trans m))
+      recv =
+          handling @CONN @trans @m $
+          coerce (T.recv @(trans m))
+      reconnect =
+          handling @CONN @trans @m $
+          coerce (T.reconnect @(trans m))
+
+runConnection :: forall tag m a. (MonadIO m, MonadThrow m) => NS.AddrInfo -> TcpT tag m a -> m a
+runConnection = coerce (T.runConnection @m @a)

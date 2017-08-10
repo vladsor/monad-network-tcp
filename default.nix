@@ -1,4 +1,4 @@
-{ mkDerivation, base, bytestring, cprng-aes, crypto-random, ether
+{ mkDerivation, base, bytestring, cprng-aes, crypto-random, ether_0_5_1_0
 , exceptions, monad-network-class, mtl, network, newtype-generics
 , stdenv, vstls, transformers
 }:
@@ -7,7 +7,7 @@ mkDerivation {
   version = "0.0.0.1";
   src = ./.;
   libraryHaskellDepends = [
-    base bytestring cprng-aes crypto-random ether exceptions
+    base bytestring cprng-aes crypto-random ether_0_5_1_0 exceptions
     monad-network-class mtl network newtype-generics vstls transformers
   ];
   homepage = "http://github.com/vladsor/monad-network-instances";
