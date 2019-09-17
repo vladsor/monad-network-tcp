@@ -15,20 +15,23 @@ Library
     default-language: Haskell2010
     build-depends: base
                  , bytestring
-                 , ether >= 0.5.0.0
+                 , tagged-transformer
                  , exceptions
                  , mmorph
                  , mtl
                  , network
-                 , tls
+                 , vstls
                  , transformers
                  , cryptonite
                  , cprng-aes
                  , monad-network-class
                  , newtype-generics
-    exposed-modules: Network.Monad
+                 , resourcet
+    exposed-modules: Network.Monad.TCP
                    , Network.Monad.TLS
-                   , Network.Ether.Monad
-                   , Network.Ether.Monad.TLS
+                   , Network.Monad.Tagged.TCP
+                   , Network.Monad.Tagged.TLS
+    other-modules: Network.Monad.TCP.Internal
+                 , Network.Monad.TLS.Internal
 
-    ghc-options: -fwarn-incomplete-patterns -O2 -auto-all -caf-all -fprof-auto -funfolding-use-threshold=16
+    ghc-options: -fwarn-incomplete-patterns -O2 -fprof-auto -funfolding-use-threshold=16 -fprint-potential-instances

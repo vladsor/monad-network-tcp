@@ -3,6 +3,7 @@
 *.hs~
 dist/
 src/main
+result
 *.aux
 *.eventlog
 *.hp
