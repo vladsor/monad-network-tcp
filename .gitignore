@@ -1,9 +1,12 @@
 *.hi
 *.o
 *.hs~
+*.un~
+*_flymake.hs
 dist/
-src/main
+dist-newstyle/
 result
+src/main
 *.aux
 *.eventlog
 *.hp
@@ -11,6 +14,5 @@ result
 *.ps
 *.pdf
 *.config
-*.un~
 TAGS
 codex.tags
