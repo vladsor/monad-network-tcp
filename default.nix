@@ -1,3 +1,3 @@
 { pkgs ? import <nixpkgs> {} }:
 
-pkgs.haskellPackages.callCabal2nix "monad-network-instances" ./. {}
+pkgs.haskellPackages.callCabal2nix "monad-network-tcp" ./. {}

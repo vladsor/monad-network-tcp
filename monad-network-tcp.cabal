@@ -1,4 +1,4 @@
-name:           monad-network-instances
+name:           monad-network-tcp
 version:        0.0.0.1
 license:        BSD3
 license-file:   LICENSE
@@ -15,23 +15,19 @@ Library
     default-language: Haskell2010
     build-depends: base
                  , bytestring
-                 , tagged-transformer
+                 , conduit
                  , exceptions
+                 , extra
                  , mmorph
+                 , monad-network-class
                  , mtl
                  , network
-                 , vstls
-                 , transformers
-                 , cryptonite
-                 , cprng-aes
-                 , monad-network-class
                  , newtype-generics
                  , resourcet
+                 , tagged-transformer
+                 , transformers
     exposed-modules: Network.Monad.TCP
-                   , Network.Monad.TLS
                    , Network.Monad.Tagged.TCP
-                   , Network.Monad.Tagged.TLS
     other-modules: Network.Monad.TCP.Internal
-                 , Network.Monad.TLS.Internal
 
     ghc-options: -fwarn-incomplete-patterns -O2 -fprof-auto -funfolding-use-threshold=16 -fprint-potential-instances
