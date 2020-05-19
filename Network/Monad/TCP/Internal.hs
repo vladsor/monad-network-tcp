@@ -26,7 +26,7 @@ import qualified Data.ByteString as S
 import           Control.Monad.IO.Class      (MonadIO (..))
 import           Control.Monad.Trans.Class   (lift)
 
-data ConnState = ConnState { ncSocket :: Socket, ncAddr :: AddrInfo }
+data ConnState = ConnState { ncSocket :: Maybe Socket, ncAddr :: AddrInfo }
 
 data TcpException = TcpExceptionConnect String
                   | TcpExceptionDisconnect String
@@ -45,13 +45,22 @@ rethrow thr io = do
 
 mkConnState :: (MonadIO m, MonadThrow m) => AddrInfo -> m ConnState
 mkConnState addr@AddrInfo{..} = do
-  s <- rethrow TcpExceptionConnect $ socket addrFamily addrSocketType addrProtocol
-  rethrow TcpExceptionConnect $ connect s addrAddress
-  return $ ConnState s addr
+  return $ ConnState Nothing addr
+
+getSocket :: (MonadIO m, MonadThrow m) => StateT ConnState m Socket
+getSocket = do
+  ConnState s' addr@(AddrInfo{..}) <- ST.get
+  case s' of
+    Just s -> return s
+    Nothing -> do
+      s <- rethrow TcpExceptionConnect $ socket addrFamily addrSocketType addrProtocol
+      rethrow TcpExceptionConnect $ connect s addrAddress
+      ST.put $ ConnState (Just s) addr
+      return s
 
 send :: (MonadIO m, MonadThrow m, Monad m) => S.ByteString -> StateT ConnState m ()
 send bs = do
-    ConnState s _ <- ST.get
+    s <- getSocket
 #ifdef DEBUG
     liftIO $ print $ "sending:" ++ (show $ S.length bs)
 #endif
@@ -60,7 +69,7 @@ send bs = do
 
 recv :: (MonadIO m, MonadThrow m, Monad m) => Int -> StateT ConnState m S.ByteString
 recv len = do
-    ConnState s _ <- ST.get
+    s <- getSocket
 #ifdef DEBUG
     liftIO $ print $ "receiving:" ++ (show len)
 #endif
@@ -69,5 +78,7 @@ recv len = do
 reconnect :: (MonadIO m, MonadThrow m, Monad m) => StateT ConnState m ()
 reconnect = do
     ConnState s addr <- ST.get
-    lift $ rethrow TcpExceptionDisconnect $ close s
+    case s of
+      Nothing -> return ()
+      Just s' -> lift $ rethrow TcpExceptionDisconnect $ close s'
     ST.StateT $ const $ ((),) <$> mkConnState addr
